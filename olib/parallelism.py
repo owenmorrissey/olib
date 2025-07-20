@@ -5,6 +5,8 @@ from .caching import cache_output
 
 # grabbed from https://stackoverflow.com/questions/37804279/how-can-we-use-tqdm-in-a-parallel-execution-with-joblib
 class ProgressParallel(Parallel):
+    "Operates like joblib.Parallel, but shows tqdm-like progress bar"
+
     def __init__(self, use_tqdm=True, total=None, *args, **kwargs):
         self._use_tqdm = use_tqdm
         self._total = total
@@ -27,11 +29,13 @@ def parallel_map(
     cache_path=None,
     recompute=False,
     show_progress=True,
+    n_jobs=-1,
+    backend="loky",
 ):
-    "Map func over objects in parallel, and optionally cache the result as a pickle"
+    "Map func over objects in parallel, and optionally cache the result as a pickle."
 
     def run():
-        with parallel_backend("loky", n_jobs=-1):
+        with parallel_backend(backend=backend, n_jobs=n_jobs):
             return ProgressParallel(total=len(objects), use_tqdm=show_progress)(
                 delayed(func)(obj) for obj in objects
             )
