@@ -3,7 +3,7 @@ from .caching import *
 from .lists import *
 from .parallelism import *
 from .priority_queue import *
-from .dict_dist import *
+from .distributions import *
 
 # Or be more explicit:
 # from .core import parallel_map, some_other_function
