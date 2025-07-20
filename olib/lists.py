@@ -1,8 +1,16 @@
 import itertools
+import operator
+import functools
 
 
-def flatten(xs_list):
-    return list(itertools.chain.from_iterable(xs_list))
+def flatten(xs_list, method="reduce"):
+    # fastest
+    if method == "reduce":
+        return list(functools.reduce(operator.iconcat, xs_list, []))
+    elif method == "chain":
+        return list(itertools.chain.from_iterable(xs_list))
+    else:
+        raise NotImplementedError(f"method: {method} is not implemented.")
 
 
 def all_empty(xs_list):
