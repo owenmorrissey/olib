@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Dict, List, Callable, Iterable, Any, Union
+from typing import Dict, List, Optional, Iterable, Any, Union
 from itertools import product
 from functools import reduce
 from collections.abc import MutableMapping
@@ -8,16 +8,18 @@ from collections.abc import MutableMapping
 class DiscreteDistribution(MutableMapping):
     """
     A probability distribution represented as a dictionary where keys are possible
-    values and values are their probabilities. Supports proportional and softmax normalization with smoothing. 
+    values and values are their probabilities. Supports proportional and softmax normalization with smoothing.
     """
+
     EPSILON = 1e-8
 
     def __init__(
         self,
-        data: Dict[Any, Union[int, float]] = None,
+        data: Optional[Dict[Any, Union[int, float]]] = None,
         normalization_method: str = "proportional",
         smoothing: float = 0.0,
-        domain: Iterable[Any] = None,
+        temperature: float = 1.0,
+        domain: Optional[Iterable[Any]] = None,
     ):
         """
         Initialize a dictionary distribution.
@@ -25,12 +27,13 @@ class DiscreteDistribution(MutableMapping):
         Args:
             data: Dictionary of values and their weights/probabilities
             normalization_method: Either "proportional" or "softmax"
-            smoothing: Smoothing parameter (acts as (temperature-1) for softmax)
+            smoothing: Only used for proportional normalization
+            temperature: Only used for softmax normalization method
             domain: Optional iterable of all possible keys. Keys not in data will be set to 0.
         """
         self.normalization_method = normalization_method
         self.smoothing = smoothing
-        self.temperature = smoothing
+        self.temperature = temperature
         self.domain = set(domain) if domain is not None else None
         self._raw_data = {}
         self._dist = {}
@@ -53,7 +56,7 @@ class DiscreteDistribution(MutableMapping):
             return
 
         if self.normalization_method == "softmax":
-            self._dist = self._normalize_softmax(self._raw_data, self.smoothing)
+            self._dist = self._normalize_softmax(self._raw_data, self.temperature)
         elif self.normalization_method == "proportional":
             self._dist = self._normalize_proportional(self._raw_data, self.smoothing)
         else:
@@ -173,15 +176,19 @@ class DiscreteDistribution(MutableMapping):
             result_data, self.normalization_method, self.smoothing
         )
 
-    # Additional utility methods
-    def update_smoothing(self, new_smoothing: float):
-        """Update smoothing parameter and re-normalize."""
-        self.smoothing = new_smoothing
-        self._update_dist()
-
-    def update_normalization_method(self, new_method: str):
-        """Update normalization method and re-normalize."""
-        self.normalization_method = new_method
+    def update_normalization_method(
+        self,
+        new_method: Optional[str] = None,
+        new_smoothing: Optional[float] = None,
+        new_temperature: Optional[float] = None,
+    ):
+        """Update normalization method and re-normalize. If no arguments are provided, the distribution will be re-normalized with the current parameters."""
+        if new_method is not None:
+            self.normalization_method = new_method
+        if new_smoothing is not None:
+            self.smoothing = new_smoothing
+        if new_temperature is not None:
+            self.temperature = new_temperature
         self._update_dist()
 
     def entropy(self) -> float:
@@ -255,6 +262,7 @@ class DiscreteDistribution(MutableMapping):
         return DiscreteDistribution(
             result_data, first_dist.normalization_method, first_dist.smoothing
         )
+
 
 # Example usage and testing
 if __name__ == "__main__":
