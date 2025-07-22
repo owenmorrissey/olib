@@ -19,3 +19,11 @@ def all_empty(xs_list):
         if len(xs) > 0:
             return False
     return True
+
+
+def flatten_tuples(t):
+    for x in t:
+        if isinstance(x, tuple):
+            yield from flatten_tuples(x)
+        else:
+            yield x

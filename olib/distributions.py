@@ -4,6 +4,8 @@ from itertools import product
 from functools import reduce
 from collections.abc import MutableMapping
 
+from lists import flatten_tuples
+
 
 class DiscreteDistribution(MutableMapping):
     """
@@ -214,6 +216,15 @@ class DiscreteDistribution(MutableMapping):
             top_items, self.normalization_method, self.smoothing
         )
 
+    def join_keys(self):
+        self._raw_data = {
+            "".join(flatten_tuples(key)): val for key, val in self._raw_data.items()
+        }
+        if self.domain is not None:
+            self.domian = set("".join(flatten_tuples(key)) for key in self.domain)
+        self._update_dist()
+        return self
+
     @staticmethod
     def product(*distributions, concat=False) -> "DiscreteDistribution":
         """
@@ -260,15 +271,16 @@ class DiscreteDistribution(MutableMapping):
             else:
                 result_data[new_key] = likelihood
 
-        if concat:
-            result_data = {"".join(keys): val for keys, val in result_data.items()}
-
-        return DiscreteDistribution(
+        prod = DiscreteDistribution(
             result_data,
             normalization_method=first_dist.normalization_method,
             smoothing=first_dist.smoothing,
             temperature=first_dist.temperature,
         )
+
+        if concat:
+            prod.join_keys()
+        return prod
 
 
 # Example usage and testing
@@ -310,3 +322,7 @@ if __name__ == "__main__":
 
     # Test sampling
     print("Sample from d2:", d2.sample(5))
+
+    # test product
+    print(DiscreteDistribution.product(d1, d2, d3, d4, d5))
+    print(DiscreteDistribution.product(d1, d2, d3, d4, d5, concat=True))
