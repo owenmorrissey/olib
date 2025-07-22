@@ -22,7 +22,7 @@ class DiscreteDistribution(MutableMapping):
         domain: Optional[Iterable[Any]] = None,
     ):
         """
-        Initialize a dictionary distribution.
+        Initialize a discrete distribution.
 
         Args:
             data: Dictionary of values and their weights/probabilities
@@ -165,7 +165,7 @@ class DiscreteDistribution(MutableMapping):
         result_data = {}
         for key1, prob1 in self._raw_data.items():
             for key2, prob2 in other._raw_data.items():
-                new_key = str(key1) + str(key2)  # Concatenate keys
+                new_key = (key1, key2)  # Concatenate keys
                 likelihood = prob1 * prob2
                 if new_key in result_data:
                     result_data[new_key] += likelihood
@@ -215,7 +215,7 @@ class DiscreteDistribution(MutableMapping):
         )
 
     @staticmethod
-    def product(*distributions) -> "DiscreteDistribution":
+    def product(*distributions, concat=False) -> "DiscreteDistribution":
         """
         Compute the Cartesian product of multiple distributions.
 
@@ -233,6 +233,7 @@ class DiscreteDistribution(MutableMapping):
                 distributions[0]._raw_data,
                 distributions[0].normalization_method,
                 distributions[0].smoothing,
+                distributions[0].temperature,
             )
 
         # Use the normalization method and smoothing from the first distribution
@@ -248,7 +249,10 @@ class DiscreteDistribution(MutableMapping):
             keys, probs = zip(*combination)
 
             # Concatenate keys to form new key
-            new_key = "".join(str(k) for k in keys)
+            if concat:
+                new_key = "".join(str(k) for k in keys)
+            else:
+                new_key = tuple(keys)
 
             # Multiply probabilities
             likelihood = reduce(lambda x, y: x * y, probs, 1)
@@ -260,7 +264,10 @@ class DiscreteDistribution(MutableMapping):
                 result_data[new_key] = likelihood
 
         return DiscreteDistribution(
-            result_data, first_dist.normalization_method, first_dist.smoothing
+            result_data,
+            normalization_method=first_dist.normalization_method,
+            smoothing=first_dist.smoothing,
+            temperature=first_dist.temmperature,
         )
 
 
