@@ -165,7 +165,7 @@ class DiscreteDistribution(MutableMapping):
         result_data = {}
         for key1, prob1 in self._raw_data.items():
             for key2, prob2 in other._raw_data.items():
-                new_key = (key1, key2)  # Concatenate keys
+                new_key = (key1, key2)
                 likelihood = prob1 * prob2
                 if new_key in result_data:
                     result_data[new_key] += likelihood
@@ -215,7 +215,7 @@ class DiscreteDistribution(MutableMapping):
         )
 
     @staticmethod
-    def product(*distributions, concat=False) -> "DiscreteDistribution":
+    def product(*distributions) -> "DiscreteDistribution":
         """
         Compute the Cartesian product of multiple distributions.
 
@@ -248,11 +248,7 @@ class DiscreteDistribution(MutableMapping):
             # combination is a tuple of (key, prob) pairs
             keys, probs = zip(*combination)
 
-            # Concatenate keys to form new key
-            if concat:
-                new_key = "".join(str(k) for k in keys)
-            else:
-                new_key = tuple(keys)
+            new_key = tuple(keys)
 
             # Multiply probabilities
             likelihood = reduce(lambda x, y: x * y, probs, 1)
