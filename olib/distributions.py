@@ -215,12 +215,13 @@ class DiscreteDistribution(MutableMapping):
         )
 
     @staticmethod
-    def product(*distributions) -> "DiscreteDistribution":
+    def product(*distributions, concat=False) -> "DiscreteDistribution":
         """
         Compute the Cartesian product of multiple distributions.
 
         Args:
             *distributions: Variable number of DiscreteDistribution objects
+            concat: whether to concatenate resulting keys
 
         Returns:
             DiscreteDistribution representing the product distribution
@@ -258,6 +259,9 @@ class DiscreteDistribution(MutableMapping):
                 result_data[new_key] += likelihood
             else:
                 result_data[new_key] = likelihood
+
+        if concat:
+            result_data = {"".join(keys): val for keys, val in result_data.items()}
 
         return DiscreteDistribution(
             result_data,
