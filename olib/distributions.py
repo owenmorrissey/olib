@@ -267,7 +267,7 @@ class DiscreteDistribution(MutableMapping):
             result_data,
             normalization_method=first_dist.normalization_method,
             smoothing=first_dist.smoothing,
-            temperature=first_dist.temmperature,
+            temperature=first_dist.temperature,
         )
 
 
