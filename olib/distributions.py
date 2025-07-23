@@ -4,7 +4,7 @@ from itertools import product
 from functools import reduce
 from collections.abc import MutableMapping
 
-from lists import flatten_tuples
+from .lists import flatten_tuples
 
 
 class DiscreteDistribution(MutableMapping):
