@@ -36,33 +36,72 @@ class DiscreteDistribution(MutableMapping):
         self.normalization_method = normalization_method
         self.smoothing = smoothing
         self.temperature = temperature
-        self.domain = set(domain) if domain is not None else None
         self._raw_data = {}
         self._dist = {}
 
         if data is not None:
             self._raw_data = dict(data)
 
-        # Add domain keys with value 0 if they're not already present
-        if self.domain is not None:
-            for key in self.domain:
-                if key not in self._raw_data:
-                    self._raw_data[key] = 0.0
+        self.domain = set(self._raw_data.keys())
+        if domain is not None:
+            for key in domain:
+                self.domain.add(key)
 
         self._update_dist()
 
-    def _update_dist(self):
-        """Update the smoothed distribution based on raw data."""
-        if not self._raw_data:
-            self._dist = {}
-            return
+    def get_or_add(self, key):
+        self.extend_domain(key)
+        return self[key]
 
+    def entropy(self) -> float:
+        """Calculate the entropy of the distribution."""
+        return -sum(p * np.log2(p) for p in self._dist.values() if p > 0)
+
+    def sample(self, n: int = 1) -> Union[Any, List[Any]]:
+        """Sample from the distribution."""
+        keys = list(self._dist.keys())
+        probs = list(self._dist.values())
+
+        samples = np.random.choice(keys, size=n, p=probs)
+
+        if n == 1:
+            return samples[0]
+        return samples.tolist()
+
+    def top_k(self, k: int) -> "DiscreteDistribution":
+        """Return a new re-normalized distribution with only the top k most probable items."""
+        sorted_items = sorted(self._raw_data.items(), key=lambda x: x[1], reverse=True)
+        top_items = dict(sorted_items[:k])
+        return DiscreteDistribution(
+            top_items, self.normalization_method, self.smoothing
+        )
+
+    def join_keys(self):
+        self._raw_data = {
+            "".join(flatten_tuples(key)): val for key, val in self._raw_data.items()
+        }
+        if self.domain is not None:
+            self.domian = set("".join(flatten_tuples(key)) for key in self.domain)
+        self._update_dist()
+        return self
+
+    def extend_domain(self, key):
+        self.domain.add(key)
+        self._update_dist()
+        return self
+
+    def _update_dist(self):
+        """Update the smoothed distribution based on raw data and domain."""
         if self.normalization_method == "softmax":
-            self._dist = self._normalize_softmax(self._raw_data, self.temperature)
+            data = self._normalize_softmax(self._raw_data, self.temperature)
         elif self.normalization_method == "proportional":
-            self._dist = self._normalize_proportional(self._raw_data, self.smoothing)
+            data = self._raw_data
         else:
             raise ValueError("normalization_method must be 'proportional' or 'softmax'")
+
+        # add zeros for unrepresented but possible events
+        zeros = {k: 0 for k in self.domain}
+        self._dist = self._normalize_proportional(zeros | data, self.smoothing)
 
     def _normalize_softmax(
         self, d: Dict[Any, float], temperature: float = 1.0
@@ -89,9 +128,9 @@ class DiscreteDistribution(MutableMapping):
         total = sum(d.values())
         if total == 0:
             # Uniform distribution if all values are 0
-            return {k: 1.0 / len(d) for k in d.keys()}
+            return {k: (1.0 / len(d)) for k in d.keys()}
 
-        unsmoothed = {k: v / total for k, v in d.items()}
+        unsmoothed = {k: (v / total) for k, v in d.items()}
 
         if smoothing == 0:
             return unsmoothed
@@ -161,7 +200,7 @@ class DiscreteDistribution(MutableMapping):
         """Cartesian product of two distributions."""
         if not isinstance(other, DiscreteDistribution):
             raise TypeError(
-                "Can only multiply DiscreteDistribution by DiscreteDistribution"
+                f"Cannot multiply DiscreteDistribution by type {type(other)}."
             )
 
         result_data = {}
@@ -192,38 +231,6 @@ class DiscreteDistribution(MutableMapping):
         if new_temperature is not None:
             self.temperature = new_temperature
         self._update_dist()
-
-    def entropy(self) -> float:
-        """Calculate the entropy of the distribution."""
-        return -sum(p * np.log2(p) for p in self._dist.values() if p > 0)
-
-    def sample(self, n: int = 1) -> Union[Any, List[Any]]:
-        """Sample from the distribution."""
-        keys = list(self._dist.keys())
-        probs = list(self._dist.values())
-
-        samples = np.random.choice(keys, size=n, p=probs)
-
-        if n == 1:
-            return samples[0]
-        return samples.tolist()
-
-    def top_k(self, k: int) -> "DiscreteDistribution":
-        """Return a new distribution with only the top k most probable items."""
-        sorted_items = sorted(self._raw_data.items(), key=lambda x: x[1], reverse=True)
-        top_items = dict(sorted_items[:k])
-        return DiscreteDistribution(
-            top_items, self.normalization_method, self.smoothing
-        )
-
-    def join_keys(self):
-        self._raw_data = {
-            "".join(flatten_tuples(key)): val for key, val in self._raw_data.items()
-        }
-        if self.domain is not None:
-            self.domian = set("".join(flatten_tuples(key)) for key in self.domain)
-        self._update_dist()
-        return self
 
     @staticmethod
     def product(*distributions, concat=False) -> "DiscreteDistribution":
